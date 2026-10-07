@@ -29,6 +29,18 @@ jobs:
         with:
           version: v2.14.0
 
+  vuln:
+    name: Vulnerability check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      # Reports only CVEs reachable from our code; fails the job when one is found.
+      - uses: golang/govulncheck-action@v1
+        with:
+          go-version-file: go.mod
+          go-package: ./...
+
   test:
     name: Test
     runs-on: ubuntu-latest
