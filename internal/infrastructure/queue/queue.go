@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/textproto"
 	"strconv"
 	"time"
 
@@ -19,12 +20,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/images"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/telemetry"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/interfaces/http/middleware"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/images"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/telemetry"
+	"github.com/iBlog/iblog-monolith-go/internal/interfaces/http/middleware"
 )
 
 // Task types.
@@ -176,7 +177,8 @@ func NewWorker(rdb *redis.Client, h Handlers) *Worker {
 		if err := json.Unmarshal(t.Payload(), &m); err != nil {
 			return fmt.Errorf("%w: %v", asynq.SkipRetry, err)
 		}
-		return h.Mailer.Send(ctx, m)
+		id, _ := asynq.GetTaskID(ctx)
+		return sendEmail(ctx, redisSentLog{rdb}, h.Mailer, id, m)
 	})
 	mux.HandleFunc(TypeThumbnail, func(ctx context.Context, t *asynq.Task) error {
 		var p keyPayload
@@ -270,6 +272,62 @@ func sweepHasWork(ctx context.Context, h Handlers) bool {
 		}
 	}
 	return false
+}
+
+// sentLog remembers which email tasks were delivered. The task ID is stable
+// across retries, so a retry after a delivered-but-unacknowledged send (the
+// worker died, or the run failed after the server took the message) finds
+// the mark and does not send again.
+type sentLog interface {
+	Sent(ctx context.Context, id string) (bool, error)
+	MarkSent(ctx context.Context, id string) error
+}
+
+// sentTTL outlives every retry (MaxRetry 5 with asynq's backoff ends within
+// days) and the SendEmailOnce retention.
+const sentTTL = 8 * 24 * time.Hour
+
+type redisSentLog struct{ rdb *redis.Client }
+
+func (l redisSentLog) Sent(ctx context.Context, id string) (bool, error) {
+	n, err := l.rdb.Exists(ctx, "email:sent:"+id).Result()
+	return n > 0, err
+}
+
+func (l redisSentLog) MarkSent(ctx context.Context, id string) error {
+	return l.rdb.Set(ctx, "email:sent:"+id, 1, sentTTL).Err()
+}
+
+func sendEmail(ctx context.Context, log sentLog, mailer application.Mailer, id string, m application.Email) error {
+	if id == "" { // no stable id: nothing to dedupe on
+		return classifyMailErr(mailer.Send(ctx, m))
+	}
+	sent, err := log.Sent(ctx, id)
+	if err != nil {
+		return fmt.Errorf("email sent check: %w", err) // retry later rather than risk a duplicate
+	}
+	if sent {
+		zap.L().Info("email already sent, skipping retry", zap.Any("ctx", ctx), zap.String("task", id))
+		return nil
+	}
+	if err := mailer.Send(ctx, m); err != nil {
+		return classifyMailErr(err)
+	}
+	// The mail is out: failing the task now would only send it again.
+	if err := log.MarkSent(ctx, id); err != nil {
+		zap.L().Warn("email mark sent", zap.Any("ctx", ctx), zap.String("task", id), zap.Error(err))
+	}
+	return nil
+}
+
+// classifyMailErr stops retries on permanent SMTP rejections (5xx: unknown
+// mailbox, policy): a retry gets the same answer.
+func classifyMailErr(err error) error {
+	var te *textproto.Error
+	if errors.As(err, &te) && te.Code >= 500 {
+		return fmt.Errorf("%w: %w", asynq.SkipRetry, err)
+	}
+	return err
 }
 
 func thumbnail(ctx context.Context, st application.Storage, key string) error {

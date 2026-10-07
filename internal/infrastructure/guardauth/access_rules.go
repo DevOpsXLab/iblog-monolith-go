@@ -23,6 +23,18 @@ type AccessRules struct {
 	ModeratorHours string
 }
 
+// NewAccessRules builds the rules from their settings: ips is a
+// comma-separated list (blanks dropped), hours an "HH:MM-HH:MM" window.
+func NewAccessRules(ips, hours string) AccessRules {
+	var list []string
+	for _, v := range strings.Split(ips, ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			list = append(list, v)
+		}
+	}
+	return AccessRules{ModeratorIPs: list, ModeratorHours: hours}
+}
+
 const (
 	policyModeratorIPs   = "config: moderators only from the office network"
 	policyModeratorHours = "config: moderators only in working hours"

@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/publication"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/publication"
 )
 
 const publicationNotFound = "publication not found"

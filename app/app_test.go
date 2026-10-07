@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/app"
-	"github.com/DevOpsXLab/iblog-monolith-go/config"
+	"github.com/iBlog/iblog-monolith-go/app"
+	"github.com/iBlog/iblog-monolith-go/config"
 	"github.com/gen2brain/webp"
 	"github.com/testcontainers/testcontainers-go"
 	tcminio "github.com/testcontainers/testcontainers-go/modules/minio"
@@ -74,7 +74,7 @@ func start(t *testing.T, opts ...func(*config.Config)) *env {
 		DatabaseURL:    dsn,
 		RedisURL:       redisURL,
 		AdminUsername:  "admin",
-		AdminEmail:     "admin@devopsxlab.dev",
+		AdminEmail:     "admin@iblog.dev",
 		AdminPassword:  "admin-pass-123",
 		S3Endpoint:     s3,
 		S3AccessKey:    "minio",

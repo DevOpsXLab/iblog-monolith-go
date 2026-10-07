@@ -13,9 +13,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/images"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/images"
 )
 
 const maxUpload = 5 << 20 // 5 MB

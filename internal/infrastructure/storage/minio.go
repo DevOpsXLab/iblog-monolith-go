@@ -7,8 +7,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"

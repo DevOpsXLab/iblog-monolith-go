@@ -3,10 +3,10 @@ package postgres
 import (
 	"context"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/revision"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/series"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/revision"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/series"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

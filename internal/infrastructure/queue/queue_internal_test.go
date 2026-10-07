@@ -8,12 +8,13 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"net/textproto"
 	"testing"
 
 	"github.com/hibiken/asynq"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
 )
 
 type memStorage struct{ objs map[string][]byte }
@@ -86,5 +87,44 @@ func TestThumbnail(t *testing.T) {
 		if _, ok := st.objs[application.VariantKey("ok.png", w)]; !ok {
 			t.Errorf("variant %d not stored", w)
 		}
+	}
+}
+
+type memSentLog map[string]bool
+
+func (l memSentLog) Sent(_ context.Context, id string) (bool, error) { return l[id], nil }
+func (l memSentLog) MarkSent(_ context.Context, id string) error     { l[id] = true; return nil }
+
+type countMailer struct {
+	n   int
+	err error
+}
+
+func (m *countMailer) Send(context.Context, application.Email) error { m.n++; return m.err }
+
+func TestSendEmailRetryDoesNotResend(t *testing.T) {
+	log, m := memSentLog{}, &countMailer{}
+	for range 3 { // first run plus two retries of the same task
+		if err := sendEmail(context.Background(), log, m, "task-1", application.Email{To: "a@example.com"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if m.n != 1 {
+		t.Fatalf("sent %d times, want 1", m.n)
+	}
+}
+
+func TestSendEmailFailureIsRetriedAndPermanentIsNot(t *testing.T) {
+	log := memSentLog{}
+	m := &countMailer{err: errors.New("dial timeout")}
+	if err := sendEmail(context.Background(), log, m, "t", application.Email{}); err == nil || errors.Is(err, asynq.SkipRetry) {
+		t.Fatalf("transient: got %v", err)
+	}
+	if log["t"] {
+		t.Fatal("failed send marked as sent")
+	}
+	m.err = &textproto.Error{Code: 550, Msg: "no such user"}
+	if err := sendEmail(context.Background(), log, m, "t", application.Email{}); !errors.Is(err, asynq.SkipRetry) {
+		t.Fatalf("permanent: got %v", err)
 	}
 }

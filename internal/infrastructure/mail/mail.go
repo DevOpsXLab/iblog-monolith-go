@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/telemetry"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -82,7 +82,10 @@ func (s SMTP) send(ctx context.Context, to string, msg []byte) error {
 	if err := wc.Close(); err != nil {
 		return err
 	}
-	return c.Quit()
+	// The server accepted the message at the end of DATA; a failed QUIT must
+	// not fail the send, or the job retries and the mail goes out twice.
+	_ = c.Quit()
+	return nil
 }
 
 // header drops line breaks, so values (post titles in subjects) cannot

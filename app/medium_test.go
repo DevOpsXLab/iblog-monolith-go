@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/config"
+	"github.com/iBlog/iblog-monolith-go/config"
 )
 
 // verify confirms name's email with the code from the outbox.

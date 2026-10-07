@@ -8,18 +8,18 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/category"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/comment"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/publication"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/readinglist"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/relation"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/report"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/revision"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/series"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/social"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/category"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/comment"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/publication"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/readinglist"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/relation"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/report"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/revision"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/series"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/social"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 func itoa(n int) string { return strconv.Itoa(n) }

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
 	"github.com/bakhod1r/errorx"
 )
 

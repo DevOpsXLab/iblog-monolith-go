@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/interfaces/http/middleware"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/interfaces/http/middleware"
 )
 
 const postNotFound = "post not found"

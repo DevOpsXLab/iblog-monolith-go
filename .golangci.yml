@@ -1,0 +1,44 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - misspell
+    - nilerr
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - usestdlibvars
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - (*github.com/redis/go-redis/v9.Client).Close
+    gosec:
+      excludes:
+        - G104 # unchecked errors: errcheck owns this
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec, noctx, bodyclose]
+      - path: ^seed/|^cmd/seed/
+        linters: [gosec]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/iBlog/iblog-monolith-go

@@ -14,10 +14,10 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/exp/zapslog"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/app"
-	"github.com/DevOpsXLab/iblog-monolith-go/config"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/telemetry"
-	httpapi "github.com/DevOpsXLab/iblog-monolith-go/internal/interfaces/http"
+	"github.com/iBlog/iblog-monolith-go/app"
+	"github.com/iBlog/iblog-monolith-go/config"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/telemetry"
+	httpapi "github.com/iBlog/iblog-monolith-go/internal/interfaces/http"
 )
 
 func main() {

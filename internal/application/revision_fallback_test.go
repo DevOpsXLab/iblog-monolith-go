@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/revision"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/revision"
 )
 
 type fakeRevisions struct {

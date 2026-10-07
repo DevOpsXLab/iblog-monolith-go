@@ -16,8 +16,6 @@ github.com/bakhod1r/emailx v0.4.0 h1:S3VV47b8SFsT/u1SXrVTGyP6k2rv21UTPcjSUG1wW6E
 github.com/bakhod1r/emailx v0.4.0/go.mod h1:lPK7Gfy0x+O+3UC/tPY0Vatf8tC7VEnpB1gZuren9S8=
 github.com/bakhod1r/errorx v0.1.0 h1:NC8Ov/fQp5AAvMlUBVw3PqCFhUxJQ/RoWseFQpH16bc=
 github.com/bakhod1r/errorx v0.1.0/go.mod h1:kgCbktkY4GVJzKGejlj9TbsZ9ru4aHHp7UjmJJRv9k4=
-github.com/bakhod1r/guard v0.3.0 h1:CbupH267wLqRLMfou5j8gf0ZUxOdEwcLlxgs5GBsrbc=
-github.com/bakhod1r/guard v0.3.0/go.mod h1:SKZ9l4LEK4iD0fpT+6PunbxBUUdhOgEO1oxSk8EUEXU=
 github.com/bakhod1r/guard v0.4.0 h1:B22ohHf6mjYjrYOtnmUwCueLTdllMAty7+AdYlisndE=
 github.com/bakhod1r/guard v0.4.0/go.mod h1:SKZ9l4LEK4iD0fpT+6PunbxBUUdhOgEO1oxSk8EUEXU=
 github.com/bakhod1r/oneenv v1.10.3 h1:Zda+GhnI63Z/wtCEe+9YhN9HCWKwdI6e/RDJHZXWaEc=

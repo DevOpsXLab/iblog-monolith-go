@@ -12,7 +12,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/redis"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/redis"
 )
 
 func connect(t *testing.T) *goredis.Client {

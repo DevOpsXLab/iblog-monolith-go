@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/guardauth"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/guardauth"
 )
 
 const (

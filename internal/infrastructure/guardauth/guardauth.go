@@ -22,11 +22,14 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/exp/zapslog"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
 )
 
-// Open creates Guard over the blog's users table and applies its migrations.
+// Open creates Guard over the blog's users table. With o.Migrate it also
+// applies Guard's migrations and seeds the blog's access rules under the
+// setup advisory lock (see setup). Without it Open runs no DDL and no seed:
+// cmd/migrate (Migrate) owns both, so replicas can use a DML-only DB user.
 func Open(ctx context.Context, db *pgxpool.Pool, rdb *redis.Client, o Options) (*guard.Guard, error) {
 	hash, err := o.hashParams()
 	if err != nil {
@@ -51,8 +54,11 @@ func Open(ctx context.Context, db *pgxpool.Pool, rdb *redis.Client, o Options) (
 	if err != nil {
 		return nil, err
 	}
-	if err := g.Migrate(ctx, ""); err != nil {
-		return nil, fmt.Errorf("guard migrate: %w", err)
+	if o.Migrate {
+		if err := setup(ctx, db, g, o.AccessRules); err != nil {
+			_ = g.Close(context.Background())
+			return nil, err
+		}
 	}
 	return g, nil
 }

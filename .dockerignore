@@ -1,5 +1,32 @@
-.git
-.DS_Store
-/api
+# Secrets: never in the build context.
 .env
-uploads
+.env.*
+*.env
+
+# VCS, CI, editors, OS junk
+.git
+.github
+.gitignore
+.idea
+.vscode
+**/.DS_Store
+
+# Container and build tooling (changing them must not bust the COPY . . layer)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+Makefile
+spector.yaml
+
+# Docs and licence. Root README.md only: cmd/seed/data/posts/*.md is go:embed input.
+README.md
+LICENSE
+
+# Tests and their output (tests run in CI, outside Docker)
+**/*_test.go
+**/testdata
+**/*.out
+**/*.log
+
+# Dev-only SQL seed (cmd/seed stays: the dev-only seed target builds it).
+seed/

@@ -44,8 +44,8 @@ var (
 	redisURL = flag.String("redis", env("SEED_REDIS_URL", "redis://localhost:6380/0"), "Redis URL")
 	adminLog = flag.String("admin", env("ADMIN_USERNAME", "admin"), "admin login")
 	adminPw  = flag.String("admin-password", env("ADMIN_PASSWORD", "admin12345"), "admin password")
-	password = flag.String("password", env("SEED_PASSWORD", "DevOpsXLab2026"), "password for every seeded user")
-	domain   = flag.String("email-domain", "devopsxlab.dev", "email domain for seeded users")
+	password = flag.String("password", env("SEED_PASSWORD", "iBlog2026"), "password for every seeded user")
+	domain   = flag.String("email-domain", "iblog.dev", "email domain for seeded users")
 	clean    = flag.Bool("clean", false, "delete e2e/test users, posts and categories first")
 )
 
@@ -482,7 +482,7 @@ func ensureUser(ctx context.Context, db *pgxpool.Pool, p person) (*client, error
 	}
 	avatar := p.Avatar
 	if avatar == "" {
-		avatar = "https://i.pravatar.cc/300?u=" + p.Username + "@devopsxlab"
+		avatar = "https://i.pravatar.cc/300?u=" + p.Username + "@iblog"
 	}
 	err = c.do("PATCH", "/api/me", map[string]string{"display_name": p.Name, "bio": p.Bio, "avatar_url": avatar}, nil)
 	return c, err

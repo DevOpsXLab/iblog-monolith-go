@@ -5,7 +5,7 @@ author: azizbek
 category: Observability
 tags: sre, incident, postmortem, culture
 labels: Tavsiya etiladi
-publication: devopsxlab-weekly
+publication: iblog-weekly
 days_ago: 15
 cover: team-meeting
 ---

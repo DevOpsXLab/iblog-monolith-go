@@ -5,7 +5,7 @@ author: sardor
 category: CI/CD
 tags: github-actions, ci, cicd, performance
 labels: Tavsiya etiladi
-publication: devopsxlab-weekly
+publication: iblog-weekly
 days_ago: 84
 cover: speed-motion
 ---

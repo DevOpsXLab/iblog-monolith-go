@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/sanction"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/sanction"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 // schedPosts publishes ids listed in due; Publish fails for ids in failing.

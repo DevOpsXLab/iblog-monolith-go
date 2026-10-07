@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

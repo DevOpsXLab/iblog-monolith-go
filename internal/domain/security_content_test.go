@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/mention"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/mfa"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/revision"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/sanction"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/series"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/mention"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/mfa"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/revision"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/sanction"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/series"
 )
 
 // RFC 6238 appendix B (SHA-1), last 6 digits.
@@ -41,7 +41,7 @@ func TestTOTPVerifyWindow(t *testing.T) {
 	if _, ok := mfa.Verify(secret, "12345", now); ok {
 		t.Fatal("short code accepted")
 	}
-	if !strings.HasPrefix(mfa.URI(secret, "a@b.c"), "otpauth://totp/DevOpsXLab:a@b.c?") {
+	if !strings.HasPrefix(mfa.URI(secret, "a@b.c"), "otpauth://totp/iBlog:a@b.c?") {
 		t.Fatal(mfa.URI(secret, "a@b.c"))
 	}
 }

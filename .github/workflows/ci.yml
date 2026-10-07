@@ -1,0 +1,121 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+concurrency:
+  # PRs: drop stale runs. main/dev pushes: never kill a run mid-build/publish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: "${{ github.workflow }}-${{ github.ref }}"
+permissions:
+  contents: read
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install dependencies
+        run: go mod download && go mod verify
+      - name: Run tests
+        run: go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Upload coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 1
+
+  # TODO: Enable SonarQube scan when the SonarQube server is available
+  # sonar:
+  #   name: SonarQube
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 10
+  #   needs: [test,lint]
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Download coverage
+  #       uses: actions/download-artifact@v8
+  #       with:
+  #         name: coverage
+  #     - name: SonarQube scan
+  #       uses: SonarSource/sonarqube-scan-action@v8
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # needs: [lint, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON((github.base_ref || github.ref_name) == 'main' && '["api","worker","migrate"]' || '["api","worker","migrate","seed"]') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [lint, test, build]
+    if: always() && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v7
+      # Every value goes through env, never ${{ }} inside run: (script injection).
+      - name: Send Telegram message
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LINT: ${{ needs.lint.result }}
+          TEST: ${{ needs.test.result }}
+          BUILD: ${{ needs.build.result }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          EVENT: ${{ github.event_name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+        run: bash .github/script/notify-telegram.sh

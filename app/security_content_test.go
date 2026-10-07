@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/mfa"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/mfa"
 )
 
 func totp(t *testing.T, secret string, offset int64) string {

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/sanction"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/sanction"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 type duePosts struct {

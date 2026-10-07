@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 // Authorizer decides with RBAC + ABAC whether the caller in ctx may perform
@@ -30,8 +30,9 @@ type Jobs interface {
 	FanoutNewPost(ctx context.Context, postID int) error
 	PurgeAccountAt(ctx context.Context, userID int, at time.Time) error
 	SendEmail(ctx context.Context, m Email) error
-	// SendEmailOnce sends at most one email per id, so a retried job does
-	// not send it twice.
+	// SendEmailOnce enqueues at most one email per id, so a repeated call
+	// does not send it twice. (Retries of any email task are deduped by the
+	// worker.)
 	SendEmailOnce(ctx context.Context, id string, m Email) error
 	Thumbnail(ctx context.Context, key string) error
 }

@@ -3,11 +3,11 @@ package http
 import (
 	"net/http"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 type registerInput struct {

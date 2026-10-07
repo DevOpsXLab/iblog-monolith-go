@@ -2,7 +2,7 @@
 
 Medium-style blogging API. Go 1.26, DDD layout, PostgreSQL (pgx) + goose migrations, Redis (cache, rate limits, views, queue, pub/sub), MinIO for uploads, [Guard](https://github.com/bakhod1r/guard) for accounts, sessions, RBAC/ABAC and audit.
 
-Frontends: [client-react](https://github.com/DevOpsXLab/iblog-client-react), [admin-react](https://github.com/DevOpsXLab/iblog-admin-react).
+Frontends: [client-react](https://github.com/iBlog/iblog-client-react), [admin-react](https://github.com/iBlog/iblog-admin-react).
 
 ## Run
 
@@ -31,7 +31,7 @@ Loaded with [oneenv](https://github.com/bakhod1r/oneenv) from `.env` (optional, 
 | `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | — | super admin seeded on start (email counts as verified) |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_USE_SSL` | `localhost:9000`, `minio`, `minio12345`, `uploads`, `false` | MinIO |
 | `SMTP_ADDR` | — | SMTP host:port; empty keeps mail in memory |
-| `MAIL_FROM` | `no-reply@devopsxlab.local` | |
+| `MAIL_FROM` | `no-reply@iblog.local` | |
 | `SITE_URL` | `http://localhost:8081` | client site, for links in email, RSS and sitemap |
 | `REQUIRE_VERIFIED_EMAIL` | `true` | block posting, commenting and new publications until the email is confirmed |
 | `IMPORT_ALLOW_PRIVATE` | `false` | let story import fetch private/loopback addresses (tests only, never in production) |
@@ -44,7 +44,7 @@ Loaded with [oneenv](https://github.com/bakhod1r/oneenv) from `.env` (optional, 
 | `TRUST_PROXY` | `false` | read client IP from `X-Real-IP` |
 | `WORKER` | `true` | run background jobs (email, thumbnails, scheduled posts, purges) in this process |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | enables OpenTelemetry traces, metrics and logs (OTLP/HTTP); compose points it at Grafana LGTM (`http://localhost:3000`) |
-| `OTEL_SERVICE_NAME` | `devopsxlab-api` | service name on all telemetry |
+| `OTEL_SERVICE_NAME` | `iblog-api` | service name on all telemetry |
 | `OTEL_TRACES_SAMPLER_ARG` | `1.0` | share of new traces sampled (parent-based); Redis calls outside a request/job are not traced |
 | `DOCS_DIR`, `DOCS_KEY`, `DOCS_PRODUCTION`, `PUBLIC_URL` | `.`, —, `false`, `http://localhost:8080` | Spector console |
 

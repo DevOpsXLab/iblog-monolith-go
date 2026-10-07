@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
 )
 
 // Product analytics event names. Clients may send only ClientEvents; the

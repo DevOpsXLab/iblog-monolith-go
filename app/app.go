@@ -20,20 +20,15 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/config"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/captcha"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/guardauth"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/importer"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/mail"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/markdown"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/postgres"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/queue"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/redis"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/secretbox"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/infrastructure/storage"
-	httpapi "github.com/DevOpsXLab/iblog-monolith-go/internal/interfaces/http"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/interfaces/http/middleware"
+	"github.com/iBlog/iblog-monolith-go/app/core"
+	"github.com/iBlog/iblog-monolith-go/config"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/captcha"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/guardauth"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/mail"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/queue"
+	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/redis"
+	httpapi "github.com/iBlog/iblog-monolith-go/internal/interfaces/http"
+	"github.com/iBlog/iblog-monolith-go/internal/interfaces/http/middleware"
 )
 
 type App struct {
@@ -69,134 +64,23 @@ func New(ctx context.Context, cfg config.Config) (_ *App, err error) {
 	// a is local, not the named result: "return nil, err" must not hide it
 	// from the cleanup below.
 	a := &App{}
-	if err := errorx.ValidateRegistryErr(); err != nil {
-		return nil, fmt.Errorf("error codes: %w", err)
-	}
 	defer func() {
 		if err != nil {
 			a.Close()
 		}
 	}()
 
-	db, err := postgres.Connect(ctx, cfg.DatabaseURL, postgres.Options{
-		MaxConns:         cfg.DBMaxConns,
-		MinConns:         cfg.DBMinConns,
-		MaxConnLifetime:  cfg.DBMaxConnLifetime,
-		StatementTimeout: cfg.DBStatementTimeout,
-		Migrate:          cfg.MigrateOnStart,
-	})
+	s, err := core.New(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
-	a.close = append(a.close, db.Close)
-
-	rdb, err := redis.Connect(ctx, cfg.RedisURL)
-	if err != nil {
-		return nil, err
-	}
-	a.close = append(a.close, func() { rdb.Close() })
+	a.close = append(a.close, s.Close)
+	a.Outbox = s.Outbox
+	db, rdb, g, st, jobs := s.DB, s.RDB, s.Guard, s.Storage, s.Jobs
 	if err := middleware.ResetCache(ctx, rdb); err != nil {
 		return nil, err
 	}
 
-	g, err := guardauth.Open(ctx, db, rdb, guardauth.Options{
-		HashMemoryKiB: cfg.PasswordHashMemoryKiB,
-		HashTime:      cfg.PasswordHashTime,
-		HashThreads:   cfg.PasswordHashThreads,
-		AuditEmailKey: cfg.AuditEmailKey,
-	})
-	if err != nil {
-		return nil, err
-	}
-	a.close = append(a.close, func() { g.Close(context.Background()) })
-	if err := guardauth.Seed(ctx, g); err != nil {
-		return nil, fmt.Errorf("seed access: %w", err)
-	}
-	if err := guardauth.SeedAccessRules(ctx, g, guardauth.AccessRules{
-		ModeratorIPs: splitList(cfg.ModeratorIPs), ModeratorHours: cfg.ModeratorHours,
-	}); err != nil {
-		return nil, fmt.Errorf("access rules: %w", err)
-	}
-
-	st, err := storage.NewMinIO(ctx, cfg.S3Endpoint, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket, cfg.S3UseSSL)
-	if err != nil {
-		return nil, fmt.Errorf("minio: %w", err)
-	}
-
-	var mailer application.Mailer
-	if cfg.SMTPAddr != "" {
-		mailer = mail.SMTP{Addr: cfg.SMTPAddr, From: cfg.MailFrom}
-	} else {
-		a.Outbox = &mail.Memory{}
-		mailer = a.Outbox
-	}
-
-	jobs := queue.NewClient(rdb)
-	a.close = append(a.close, func() { jobs.Close() })
-
-	users := postgres.NewUserRepo(db)
-	blog := application.NewBlog(application.Repos{
-		Posts:        postgres.NewPostRepo(db),
-		Comments:     postgres.NewCommentRepo(db),
-		Categories:   postgres.NewCategoryRepo(db),
-		Users:        users,
-		Social:       postgres.NewSocialRepo(db),
-		Reports:      postgres.NewReportRepo(db),
-		Publications: postgres.NewPublicationRepo(db),
-		Stats:        postgres.NewStatsRepo(db),
-		Relations:    postgres.NewRelationRepo(db),
-		Revisions:    postgres.NewRevisionRepo(db),
-		Series:       postgres.NewSeriesRepo(db),
-		Discovery:    postgres.NewDiscoveryRepo(db),
-		Lists:        postgres.NewListRepo(db),
-	}, application.Ports{
-		Authz:    guardauth.Authorizer{G: g},
-		Audit:    guardauth.Auditor{G: g},
-		Jobs:     jobs,
-		Events:   redis.Events{RDB: rdb},
-		Views:    redis.Views{RDB: rdb},
-		Markdown: markdown.New(),
-		Importer: importer.New(cfg.ImportAllowPrivate),
-	})
-	blog.RequireVerifiedEmail = cfg.RequireVerifiedEmail
-	blog.SiteURL = cfg.SiteURL
-	blog.APIURL = cfg.PublicURL
-	if cfg.MFAKey == "" {
-		return nil, fmt.Errorf("config: MFA_KEY is required (set APP_ENV=dev for development keys)")
-	}
-	unsubSecret := cfg.UnsubscribeKey
-	if unsubSecret == "" {
-		// Legacy derivation: links emailed before UNSUBSCRIBE_KEY existed
-		// were signed with a key derived from MFA_KEY.
-		zap.L().Warn("UNSUBSCRIBE_KEY not set: unsubscribe links are signed with a key derived from MFA_KEY")
-		unsubSecret = cfg.MFAKey
-	}
-	unsubKey := sha256.Sum256([]byte("unsubscribe:" + unsubSecret))
-	blog.UnsubscribeKey = unsubKey[:]
-	accounts := application.NewAccounts(users, guardauth.Identity{G: g},
-		redis.ResetTokens{RDB: rdb}, redis.ResetTokens{RDB: rdb, Prefix: "verify"}, blog, cfg.SiteURL)
-	if cfg.Dev() {
-		zap.L().Warn("APP_ENV=dev: development secrets allowed; never run this in production")
-	}
-	box, err := secretbox.New(cfg.MFAKey)
-	if err != nil {
-		return nil, err
-	}
-	accounts.MFA = postgres.NewMFARepo(db)
-	accounts.Challenges = redis.MFAChallenges{RDB: rdb}
-	accounts.Secrets = box
-	accounts.Sanctions = postgres.NewSanctionRepo(db)
-
-	if cfg.AdminUsername != "" && cfg.AdminEmail != "" && cfg.AdminPassword != "" {
-		if err := accounts.EnsureAdmin(ctx, cfg.AdminUsername, cfg.AdminEmail, cfg.AdminPassword); err != nil {
-			return nil, fmt.Errorf("seed admin: %w", err)
-		}
-	}
-
-	var analytics *application.Analytics
-	if cfg.Analytics {
-		analytics = application.NewAnalytics(postgres.NewAnalyticsRepo(db), guardauth.Authorizer{G: g})
-	}
 	var verifyCaptcha func(ctx context.Context, token, ip string) error
 	if cfg.TurnstileSecret != "" {
 		verifyCaptcha = captcha.Turnstile{Secret: cfg.TurnstileSecret, URL: cfg.TurnstileVerifyURL}.Verify
@@ -205,7 +89,7 @@ func New(ctx context.Context, cfg config.Config) (_ *App, err error) {
 	}
 
 	if cfg.Worker {
-		a.worker = queue.NewWorker(rdb, queue.Handlers{Blog: blog, Accounts: accounts, Mailer: mailer, Storage: st, Analytics: analytics})
+		a.worker = queue.NewWorker(rdb, s.Handlers())
 	}
 
 	trusted, err := cfg.TrustedProxyPrefixes()
@@ -229,8 +113,8 @@ func New(ctx context.Context, cfg config.Config) (_ *App, err error) {
 
 	api := http.NewServeMux()
 	httpapi.NewHandler(httpapi.Deps{
-		Blog:     blog,
-		Accounts: accounts,
+		Blog:     s.Blog,
+		Accounts: s.Accounts,
 		Storage:  st,
 		Jobs:     jobs,
 		Events:   redis.Events{RDB: rdb},
@@ -245,7 +129,7 @@ func New(ctx context.Context, cfg config.Config) (_ *App, err error) {
 		ClientIP: ip,
 		Tickets:  redis.ResetTokens{RDB: rdb, Prefix: "sse"},
 
-		Analytics:      analytics,
+		Analytics:      s.Analytics,
 		Captcha:        verifyCaptcha,
 		CaptchaSiteKey: cfg.TurnstileSiteKey,
 		SiteName:       cfg.SiteName,
@@ -349,7 +233,7 @@ func mountDocs(mux *http.ServeMux, cfg config.Config) {
 	}
 	docs := spector.Handler(spector.Config{
 		Dir:        cfg.DocsDir,
-		Title:      "DevOpsXLab Blog API",
+		Title:      "iBlog Blog API",
 		Version:    "2.0.0",
 		Adapter:    "stdlib",
 		BasePath:   base,
@@ -368,15 +252,4 @@ func mountDocs(mux *http.ServeMux, cfg config.Config) {
 		http.Redirect(w, r, target, http.StatusMovedPermanently)
 	})
 	mux.Handle(base+"/", http.StripPrefix(base, docs))
-}
-
-// splitList splits a comma-separated setting, dropping blanks.
-func splitList(s string) []string {
-	var out []string
-	for _, v := range strings.Split(s, ",") {
-		if v = strings.TrimSpace(v); v != "" {
-			out = append(out, v)
-		}
-	}
-	return out
 }

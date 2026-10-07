@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/category"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/comment"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/publication"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/report"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/category"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/comment"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/publication"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/report"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 func isInvalid(err error) bool {

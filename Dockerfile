@@ -1,26 +1,78 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.26-alpine AS build
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
-COPY . .
-# nodynamic: webp uses its pure-Go codec instead of dlopen (distroless has no libc)
-RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    for c in app worker migrate; do \
-      CGO_ENABLED=0 go build -tags nodynamic -trimpath -ldflags="-s -w" -o /out/$c ./cmd/$c || exit 1; \
-    done
 
-FROM gcr.io/distroless/static-debian12:nonroot
-WORKDIR /
-COPY --from=build /out/app /app
-COPY --from=build /out/worker /worker
-COPY --from=build /out/migrate /migrate
-# Go sources only: the Spector API console builds its docs from them.
-COPY --from=build /src/go.mod /src/go.mod
-COPY --from=build /src/app /src/app
-COPY --from=build /src/cmd /src/cmd
-COPY --from=build /src/config /src/config
-COPY --from=build /src/internal /src/internal
-ENV DOCS_DIR=/src
-EXPOSE 8080 9090
-ENTRYPOINT ["/app"]
+# ---------- builder ----------
+FROM golang:1.27.1-alpine AS builder
+
+# GOCACHE matches the build-cache mount below.
+ENV CGO_ENABLED=0 GOOS=linux GOTOOLCHAIN=local GOCACHE=/root/.cache/go-build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY . .
+
+# seed is built in its own stage below, so release targets never pay for it.
+# -tags nodynamic: gen2brain/webp otherwise dlopens libwebp via purego, which
+# makes the binary dynamically linked even with CGO_ENABLED=0 and it fails
+# on distroless/static with "exec /api: no such file or directory".
+ARG GOFLAGS="-trimpath -tags=nodynamic"
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -ldflags="-s -w" -o /out/api         ./cmd/app && \
+    go build -ldflags="-s -w" -o /out/worker      ./cmd/worker && \
+    go build -ldflags="-s -w" -o /out/migrate     ./cmd/migrate
+
+# ---------- builder-seed (dev only) ----------
+# Separate stage: BuildKit skips it for --target api/worker/migrate.
+FROM builder AS builder-seed
+
+# ARG scope ends with its stage; redeclare for this one.
+ARG GOFLAGS="-trimpath -tags=nodynamic"
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -ldflags="-s -w" -o /out/seed ./cmd/seed
+
+# ---------- runtime: seed (dev only, never pushed) ----------
+# One-shot demo data loader; run once against a dev database.
+FROM gcr.io/distroless/static-debian12:nonroot AS seed
+
+COPY --from=builder-seed /out/seed /seed
+
+ENTRYPOINT ["/seed"]
+
+# ---------- runtime: migrate (one-shot release job) ----------
+# Runs before api/worker on every deploy, then exits.
+# The first admin comes from ADMIN_USERNAME/ADMIN_EMAIL/ADMIN_PASSWORD on the
+# api (app.New -> EnsureAdmin); cmd/createadmin is a local break-glass tool
+# (go run ./cmd/createadmin) and is not shipped in any image.
+FROM gcr.io/distroless/static-debian12:nonroot AS migrate
+
+COPY --from=builder /out/migrate /migrate
+
+ENTRYPOINT ["/migrate"]
+
+# ---------- runtime: worker ----------
+# Needs METRICS_ADDR set: -healthcheck probes /healthz on that listener.
+FROM gcr.io/distroless/static-debian12:nonroot AS worker
+
+COPY --from=builder /out/worker /worker
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+    CMD ["/worker", "-healthcheck"]
+
+ENTRYPOINT ["/worker"]
+
+# ---------- runtime: api (last stage = default target) ----------
+# Port comes from PORT at run time; nothing is baked into the image.
+FROM gcr.io/distroless/static-debian12:nonroot AS api
+
+COPY --from=builder /out/api /api
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+    CMD ["/api", "-healthcheck"]
+
+ENTRYPOINT ["/api"]

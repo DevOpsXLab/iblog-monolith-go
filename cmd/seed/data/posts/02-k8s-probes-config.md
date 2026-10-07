@@ -5,7 +5,7 @@ author: azizbek
 category: Kubernetes
 tags: kubernetes, configmap, probes, k8s
 labels: Qo'llanma
-publication: devopsxlab-weekly
+publication: iblog-weekly
 series: kubernetes-noldan
 days_ago: 104
 cover: server-room-lights

@@ -17,13 +17,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
 )
 
 const (
 	Period  = 30 * time.Second
 	Digits  = 6
-	Issuer  = "DevOpsXLab"
+	Issuer  = "iBlog"
 	Skew    = 1 // steps accepted before and after now (clock drift)
 	Backups = 10
 )

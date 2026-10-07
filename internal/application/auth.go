@@ -8,12 +8,12 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/mfa"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/post"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/sanction"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/social"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/mfa"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/post"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/sanction"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/social"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 var ErrInvalidCredentials = errors.New("invalid login or password")

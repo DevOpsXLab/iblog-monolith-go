@@ -27,7 +27,7 @@ import (
 )
 
 // ServiceName is used when OTEL_SERVICE_NAME is not set.
-const ServiceName = "devopsxlab-api"
+const ServiceName = "iblog-api"
 
 // Enabled reports whether OTLP export is configured.
 func Enabled() bool { return os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" }
@@ -114,7 +114,7 @@ func (s dropOrphanClients) Description() string {
 	return "DropOrphanClients{" + s.Sampler.Description() + "}"
 }
 
-var tracer = otel.Tracer("github.com/DevOpsXLab/iblog-monolith-go")
+var tracer = otel.Tracer("github.com/iBlog/iblog-monolith-go")
 
 // Start starts an internal span.
 func Start(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
 )
 
 // fakeSMTP accepts one connection, speaks just enough SMTP for net/smtp and

@@ -5,7 +5,7 @@ author: azizbek
 category: Kubernetes
 tags: kubernetes, ingress, tls, cert-manager
 labels: Qo'llanma
-publication: devopsxlab-weekly
+publication: iblog-weekly
 series: kubernetes-noldan
 days_ago: 89
 cover: network-cables

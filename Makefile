@@ -1,7 +1,8 @@
 .DEFAULT_GOAL := help
-.PHONY: help deps run worker migrate build admin seed test test-all cover vet fmt tidy openapi up down logs
+.PHONY: help deps run worker migrate build admin seed test test-all cover vet lint lint-fix actionlint fmt tidy openapi images up up-seed ps down reset logs
 
 BIN      ?= bin/app
+TAG      ?= dev
 USERNAME ?= admin
 EMAIL    ?= admin@example.com
 
@@ -29,7 +30,7 @@ seed: ## fill running stack with demo content (authors, posts, comments, claps..
 worker: ## run background worker (pair with WORKER=false on the API)
 	go run ./cmd/worker
 
-migrate: ## apply migrations and exit
+migrate: ## apply app migrations, then Guard migrations + access seed
 	go run ./cmd/migrate
 
 test: ## unit tests (race detector on)
@@ -45,6 +46,16 @@ cover: ## unit + integration coverage across packages (needs Docker); writes cov
 vet: ## go vet
 	go vet ./...
 
+lint: ## golangci-lint v2 (.golangci.yml)
+	golangci-lint run ./...
+
+lint-fix: ## golangci-lint with autofix + gofmt/goimports
+	golangci-lint run --fix ./...
+	golangci-lint fmt ./...
+
+actionlint: ## lint GitHub Actions workflows (.github/workflows)
+	actionlint
+
 fmt: ## gofmt
 	gofmt -w .
 
@@ -54,11 +65,23 @@ tidy: ## go mod tidy
 openapi: ## generate openapi.json with Spector CLI
 	spector -dir . -o openapi.json
 
-up: ## whole stack
-	docker compose up -d --build
+images: ## build release images (migrate, worker, api) tagged $(TAG)
+	for t in migrate worker api; do docker build --target $$t -t iblog-$$t:$(TAG) . || exit 1; done
 
-down: ## stop stack
+up: ## whole stack: infra -> migrate -> api + worker, waits until healthy
+	docker compose up -d --build --wait
+
+up-seed: ## demo data into the compose stack (dev profile, run once)
+	docker compose --profile dev run --rm --build seed
+
+ps: ## stack status and health
+	docker compose ps -a
+
+down: ## stop stack (data kept)
 	docker compose down
 
-logs: ## follow api logs
-	docker compose logs -f api
+reset: ## stop stack and DELETE its volumes (postgres, redis, minio data)
+	docker compose --profile dev down -v
+
+logs: ## follow api + worker logs
+	docker compose logs -f api worker

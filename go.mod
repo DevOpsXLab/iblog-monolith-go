@@ -1,6 +1,6 @@
-module github.com/DevOpsXLab/iblog-monolith-go
+module github.com/iBlog/iblog-monolith-go
 
-go 1.26.6
+go 1.27.1
 
 require (
 	github.com/bakhod1r/emailx v0.4.0
@@ -16,6 +16,7 @@ require (
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/pressly/goose/v3 v3.28.0
 	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus/client_model v0.6.2
 	github.com/redis/go-redis/extra/redisotel/v9 v9.22.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/testcontainers/testcontainers-go v0.44.0
@@ -108,7 +109,6 @@ require (
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/redis/go-redis/extra/rediscmd/v9 v9.22.0 // indirect

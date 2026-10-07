@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/report"
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/domain/user"
+	"github.com/iBlog/iblog-monolith-go/internal/domain"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/report"
+	"github.com/iBlog/iblog-monolith-go/internal/domain/user"
 )
 
 // Report files a report on a post, comment or user the caller can see.

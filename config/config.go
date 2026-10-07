@@ -41,7 +41,7 @@ type Config struct {
 	S3UseSSL    bool   `env:"S3_USE_SSL" default:"false" desc:"use HTTPS to reach MinIO"`
 
 	SMTPAddr string `env:"SMTP_ADDR" desc:"SMTP host:port (Mailpit in dev); empty keeps mail in memory"`
-	MailFrom string `env:"MAIL_FROM" default:"no-reply@devopsxlab.local" desc:"sender address"`
+	MailFrom string `env:"MAIL_FROM" default:"no-reply@iblog.local" desc:"sender address"`
 
 	SiteURL        string `env:"SITE_URL" default:"http://localhost:8081" desc:"public client site, for links in email, RSS and sitemap"`
 	ModeratorIPs   string `env:"ACCESS_MODERATOR_IPS" desc:"comma-separated client IPs moderators may use the API from; empty = any"`
@@ -57,7 +57,7 @@ type Config struct {
 	// "Authorization: Bearer <token>". Empty keeps /metrics off the public port.
 	MetricsToken string `env:"METRICS_TOKEN,secret" desc:"bearer token for /metrics on the public port (>= 32 chars); empty = not served there"`
 
-	MigrateOnStart     bool          `env:"MIGRATE_ON_START" default:"true" desc:"apply migrations when the app starts (with an advisory lock)"`
+	MigrateOnStart     bool          `env:"MIGRATE_ON_START" default:"true" desc:"apply app + Guard migrations and the access seed at start, under advisory locks (dev convenience); set false in prod and run cmd/migrate as a release job"`
 	DBMaxConns         int32         `env:"DB_MAX_CONNS" default:"20" desc:"Postgres pool size"`
 	DBMinConns         int32         `env:"DB_MIN_CONNS" default:"2" desc:"Postgres idle connections kept open"`
 	DBMaxConnLifetime  time.Duration `env:"DB_MAX_CONN_LIFETIME" default:"30m" desc:"recycle Postgres connections after this"`

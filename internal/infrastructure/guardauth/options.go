@@ -17,6 +17,11 @@ type Options struct {
 	// AuditEmailKey is AUDIT_EMAIL_KEY: hex, at least 32 bytes once decoded.
 	// Empty leaves audit events with an unkeyed email fingerprint.
 	AuditEmailKey string
+	// Migrate applies Guard's migrations and seeds permissions, roles and
+	// policies (Seed, SeedAccessRules) when Open runs. MIGRATE_ON_START.
+	Migrate bool
+	// AccessRules are the config-driven moderator gates seeded with Migrate.
+	AccessRules AccessRules
 }
 
 // Argon2id floor Guard enforces (OWASP minimum).

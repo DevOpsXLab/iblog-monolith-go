@@ -36,7 +36,7 @@ type pub struct {
 }
 
 var publications = []pub{
-	{"devopsxlab-weekly", "DevOpsXLab Weekly", "Har hafta: Kubernetes, CI/CD va SRE bo'yicha amaliy maqolalar.", "azizbek",
+	{"iblog-weekly", "iBlog Weekly", "Har hafta: Kubernetes, CI/CD va SRE bo'yicha amaliy maqolalar.", "azizbek",
 		map[string]string{"sardor": "editor", "jasur": "writer"}},
 	{"cloud-native-uz", "Cloud Native UZ", "O'zbek tilidagi cloud-native hamjamiyat blogi: bulut, Linux va observability.", "dilnoza",
 		map[string]string{"nodira": "editor", "timur": "writer"}},

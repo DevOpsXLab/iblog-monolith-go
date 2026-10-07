@@ -5,7 +5,7 @@ author: azizbek
 category: Kubernetes
 tags: kubernetes, k8s, deployment, beginners
 labels: Qo'llanma, Yangi boshlovchilar
-publication: devopsxlab-weekly
+publication: iblog-weekly
 series: kubernetes-noldan
 days_ago: 118
 cover: kubernetes-cluster

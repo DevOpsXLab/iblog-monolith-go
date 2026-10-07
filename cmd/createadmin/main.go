@@ -17,8 +17,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/app"
-	"github.com/DevOpsXLab/iblog-monolith-go/config"
+	"github.com/iBlog/iblog-monolith-go/app"
+	"github.com/iBlog/iblog-monolith-go/config"
 )
 
 func main() {
@@ -62,7 +62,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// app.New seeds the admin from these and runs migrations; no worker.
+	// app.New seeds the admin from these; no worker. MigrateOnStart keeps its
+	// config value: run cmd/migrate first when it is false.
 	cfg.AdminUsername, cfg.AdminEmail, cfg.AdminPassword = *username, *email, pw
 	cfg.Worker = false
 

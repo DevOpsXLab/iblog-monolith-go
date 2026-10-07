@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/config"
+	"github.com/iBlog/iblog-monolith-go/config"
 )
 
 func TestAnalyticsFunnelAndRetention(t *testing.T) {

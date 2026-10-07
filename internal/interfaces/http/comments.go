@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/DevOpsXLab/iblog-monolith-go/internal/application"
+	"github.com/iBlog/iblog-monolith-go/internal/application"
 )
 
 type commentInput struct {
