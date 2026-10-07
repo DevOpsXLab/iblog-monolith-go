@@ -1,0 +1,10 @@
+# Spector CLI config: `spector -dir . -o openapi.json`, `spector -dir . -sdk ts -sdk-out ../client-react/src/api/gen`
+title: DevOpsXLab Blog API
+version: 1.0.0
+adapter: stdlib
+servers:
+  - url: http://localhost:8080
+    description: local
+security:
+  bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+basePath: /api/docs

@@ -1,0 +1,132 @@
+services:
+  api:
+    build: .
+    environment: &api-env
+      # dev allows the development secrets below; production refuses them.
+      APP_ENV: ${APP_ENV:-dev}
+      MFA_KEY: ${MFA_KEY:-}
+      UNSUBSCRIBE_KEY: ${UNSUBSCRIBE_KEY:-}
+      RATE_LIMIT_MULTIPLIER: ${RATE_LIMIT_MULTIPLIER:-1} # e2e reruns: 20 (dev only)
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081,http://localhost:8082}
+      WORKER: "false" # background jobs run in the worker service
+      DATABASE_URL: postgres://blog:blog@postgres:5432/blog?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@devopsxlab.dev}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+      S3_ENDPOINT: minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minio}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minio12345}
+      SMTP_ADDR: mailpit:1025
+      SITE_URL: ${SITE_URL:-http://localhost:8081}
+      # Moderators: API (and admin panel) only in these hours and from these IPs.
+      ACCESS_TIMEZONE: ${ACCESS_TIMEZONE:-Asia/Tashkent}
+      ACCESS_MODERATOR_HOURS: ${ACCESS_MODERATOR_HOURS:-09:00-18:00}
+      ACCESS_MODERATOR_IPS: ${ACCESS_MODERATOR_IPS:-} # e.g. 203.0.113.7,203.0.113.8; empty = any network
+      TRUST_PROXY: "false" # the API is published directly; enable only behind a proxy listed in TRUSTED_PROXIES
+      REQUIRE_VERIFIED_EMAIL: ${REQUIRE_VERIFIED_EMAIL:-true} # confirm links land in Mailpit (:8025)
+      AUDIT_EMAIL_KEY: ${AUDIT_EMAIL_KEY:-}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      DOCS_KEY: ${DOCS_KEY:-}
+      SITE_NAME: ${SITE_NAME:-iBlog}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
+      ANALYTICS: ${ANALYTICS:-true}
+      # OpenTelemetry: traces, metrics, logs to Grafana LGTM (UI :3000)
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://lgtm:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-devopsxlab-api}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment.name=local}
+      OTEL_TRACES_SAMPLER_ARG: ${OTEL_TRACES_SAMPLER_ARG:-1.0}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "/app", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    depends_on: &api-deps
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      lgtm:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build: .
+    entrypoint: ["/worker"]
+    environment:
+      <<: *api-env
+      WORKER: "true"
+      MIGRATE_ON_START: "false"
+      OTEL_SERVICE_NAME: devopsxlab-worker
+    depends_on:
+      <<: *api-deps
+      api:
+        condition: service_healthy # api applies migrations first
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: blog
+      POSTGRES_DB: blog
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blog"]
+      interval: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 10
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest # Docker Hub minio/minio is no longer published
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minio12345}
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # console
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - "8025:8025" # web UI: read password reset emails
+      - "1025:1025" # SMTP
+
+  lgtm:
+    image: grafana/otel-lgtm:0.35.0 # Grafana + Tempo + Prometheus + Loki + OTel Collector
+    ports:
+      - "3000:3000" # Grafana (admin/admin)
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    volumes:
+      - lgtmdata:/data
+
+volumes:
+  pgdata:
+  lgtmdata:
+  miniodata:
