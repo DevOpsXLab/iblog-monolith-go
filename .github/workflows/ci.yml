@@ -11,7 +11,7 @@ on:
 concurrency:
   # PRs: drop stale runs. main/dev pushes: never kill a run mid-build/publish.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: "${{ github.workflow }}-${{ github.ref }}"
+  group: "ci-${{ github.workflow }}-${{ github.ref }}"
 permissions:
   contents: read
 jobs:
@@ -112,6 +112,10 @@ jobs:
     timeout-minutes: 2
     needs: [lint, test, build]
     if: always() && github.event_name == 'push'
+    # Per-branch Telegram secrets; deployment: false keeps Deployments history clean.
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'dev' }}
+      deployment: false
     steps:
       - uses: actions/checkout@v7
       # Every value goes through env, never ${{ }} inside run: (script injection).
