@@ -2,12 +2,19 @@
 # Sends CI result to the Telegram dev group topic.
 # Env: BOT_TOKEN CHAT_ID TOPIC_ID LINT TYPECHECK TEST BUILD REPO BRANCH ACTOR
 #      REPO_URL RUN_URL COMMIT_MSG COMMIT_URL
+# LINT/TYPECHECK/TEST/BUILD are optional: an unset stage is not reported
+# (e.g. frontend repos have no Test job), so one script serves every repo.
 set -euo pipefail
 
 if [ -z "${BOT_TOKEN:-}" ] || [ -z "${CHAT_ID:-}" ]; then
-  echo "BOT_TOKEN/CHAT_ID missing - Telegram message not sent"
-  exit 0
+  echo "::error::BOT_TOKEN/CHAT_ID missing - Telegram message not sent"
+  exit 1
 fi
+
+LINT="${LINT:-}"
+TYPECHECK="${TYPECHECK:-}"
+TEST="${TEST:-}"
+BUILD="${BUILD:-}"
 
 escape_html() {
   printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
@@ -89,7 +96,16 @@ if [ -n "${TOPIC_ID:-}" ]; then
   ARGS+=(-d message_thread_id="${TOPIC_ID}")
 fi
 
-curl -sS -o /dev/null -w "HTTP_STATUS:%{http_code}\n" -X POST \
+# Fail the job when Telegram rejects the message or is unreachable.
+RESPONSE_FILE=$(mktemp)
+HTTP_STATUS=$(curl -sS --retry 3 --retry-delay 2 --max-time 30 \
+  -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
   "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
   "${ARGS[@]}" \
-  --data-urlencode "text=${TEXT}"
+  --data-urlencode "text=${TEXT}") || HTTP_STATUS="000"
+echo "HTTP_STATUS:${HTTP_STATUS}"
+if [ "$HTTP_STATUS" != "200" ]; then
+  # Response body never contains the bot token, safe to print.
+  echo "::error::Telegram sendMessage failed (HTTP ${HTTP_STATUS}): $(cat "$RESPONSE_FILE")"
+  exit 1
+fi
