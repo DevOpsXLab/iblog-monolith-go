@@ -1,30 +1,139 @@
 name: CD
+
+# Deploys after a PR is merged: dev -> dev environment, main -> production.
+# GitHub has no merge event: a merged PR is a push to its base branch, so CD
+# triggers on push. CI gates the PR; branch protection keeps direct pushes out.
+# Each environment has its own vars/secrets (own server, own settings).
+#   meta -> build -> scan -> push --\
+#        \-> env -------------------+-> deploy -> notify
+# Jobs are reusable workflows (_*.yml, defaults in their inputs); this file
+# passes only what is specific to this service. Long steps are plain scripts in ../scripts/.
+#
+# Repository var: APP_NAME (image/artifact/container prefix, e.g. iblog).
+# GitHub environments (same names, different values):
+#   vars:    SERVER_HOST, SERVER_USER, DEPLOY_DIR, DOCKER_NETWORK, DOCKERHUB_USERNAME, IMAGE_NAME,
+#            TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID (optional), CREDS_CMD (systemd-creds only)
+#   secrets: SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS (ssh-keyscan output, checked once by hand),
+#            DOCKERHUB_TOKEN, APP_SECRETS (dotenv text), TELEGRAM_BOT_TOKEN
+# Server: docker, deploy user in the docker group, registry login, the DOCKER_NETWORK network
+# with postgres/redis/minio (see _deploy.yml).
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
-    branches:
-      - main
-      - dev
+  push:
+    # Literal on purpose: GitHub does not evaluate expressions in triggers.
+    branches: [main, dev]
+  # Manual run: redeploy the branch HEAD, or roll back to an existing tag.
+  workflow_dispatch:
+    inputs:
+      rollback-tag:
+        description: "Roll back: deploy this existing image tag (short sha, e.g. 8d777fa); skips build, scan and push. Empty = normal deploy."
+        type: string
+        default: ""
+      rollback-migrations:
+        description: "With rollback-tag: also roll the DB schema back (goose down to the old image's newest migration). DESTRUCTIVE: data in columns/tables added since is lost."
+        type: boolean
+        default: false
+
+# One lock per branch, so per environment: dev and production deploy
+# independently, but two runs never hit the same server at once.
+# Never cancel a deploy mid-way.
 concurrency:
-  # PRs: drop stale runs. main/dev pushes: never kill a run mid-build/publish.
+  group: cd-${{ github.ref_name }}
   cancel-in-progress: false
-  group: "cd-${{ github.event.workflow_run.head_branch }}"
+
 permissions:
   contents: read
+
 jobs:
+  # Run-wide values, computed once: target environment, image tag, version,
+  # and whether this run is a manual rollback.
+  meta:
+    uses: ./.github/workflows/_meta.yml
+    with:
+      rollback-tag: ${{ inputs.rollback-tag }}
+      rollback-migrations: ${{ inputs.rollback-migrations || false }}
+
+  # build -> scan -> push are skipped on a rollback: the image already exists.
   build:
-    name: Build (${{ matrix.target }})
-    if : ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      packages: write
-    strategy:
+    needs: meta
+    if: needs.meta.outputs.rollback != 'true'
+    uses: ./.github/workflows/_image-build.yml
+    with:
+      version: ${{ needs.meta.outputs.version }}
+      targets: &targets '["migrate","api","worker"]' # Dockerfile stages
+      app-name: &app-name ${{ vars.APP_NAME }} # local image/artifact prefix
+      artifact: true
       fail-fast: true
-      matrix:
-        target: ${{ fromJSON(github.event.workflow_run.head_branch == 'main' && '["api","worker","migrate"]' || '["api","worker","migrate","seed"]') }}
-    steps:
-      - uses: actions/checkout@v7
+
+  scan:
+    needs: build
+    uses: ./.github/workflows/_image-scan.yml
+    with:
+      targets: *targets
+      app-name: *app-name
+
+  # Only after every image passed the scan, so a release is all or nothing.
+  push:
+    needs: [meta, scan]
+    uses: ./.github/workflows/_image-push.yml
+    with:
+      environment: &environment ${{ needs.meta.outputs.environment }}
+      tag: &tag ${{ needs.meta.outputs.tag }}
+      targets: *targets
+      app-name: *app-name
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # App settings on the server; parallel to build/scan/push, so missing
+  # settings fail the run before deploy starts.
+  env:
+    needs: meta
+    uses: ./.github/workflows/_env.yml
+    with:
+      environment: *environment
+      source: github # APP_SECRETS environment secret
+      delivery: files # secret keys as files, app reads KEY_FILE
+      secret-keys: >-
+        DATABASE_URL REDIS_URL S3_ACCESS_KEY S3_SECRET_KEY MFA_KEY
+        UNSUBSCRIBE_KEY AUDIT_EMAIL_KEY METRICS_TOKEN DOCS_KEY TURNSTILE_SECRET
+      required-keys: >-
+        APP_ENV DATABASE_URL REDIS_URL S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY
+        S3_BUCKET MFA_KEY UNSUBSCRIBE_KEY AUDIT_EMAIL_KEY SITE_URL PUBLIC_URL
+        SMTP_ADDR MAIL_FROM
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+      APP_SECRETS: ${{ secrets.APP_SECRETS }}
+
+  # Plain docker on the server: migrate, then replace api/worker, rollback on failure.
+  # Runs after a successful push, or straight after env on a manual rollback.
+  deploy:
+    needs: [meta, push, env]
+    if: >-
+      always() && needs.meta.result == 'success' && needs.env.result == 'success' &&
+      (needs.push.result == 'success' || needs.meta.outputs.rollback == 'true')
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: *environment
+      tag: *tag
+      migrate-service: migrate
+      migrate-mode: ${{ needs.meta.outputs.migrate-mode }} # up | skip | down, see meta.sh
+      app-services: api worker
+      container-prefix: ${{ vars.APP_NAME }}-
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+  notify:
+    needs: [meta, build, scan, push, env, deploy]
+    if: always() && needs.meta.result == 'success'
+    uses: ./.github/workflows/_notify.yml
+    with:
+      environment: *environment
+      mode: cd
+      results: ${{ toJSON(needs) }}
+      tag: *tag
+      branch: ${{ github.ref_name }}
+      title: ${{ needs.meta.outputs.rollback == 'true' && format('rollback to {0}', inputs.rollback-tag) || github.event.head_commit.message || 'manual deploy' }}
+      url: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

@@ -23,6 +23,12 @@ import (
 	"github.com/iBlog/iblog-monolith-go/internal/infrastructure/telemetry"
 )
 
+// Set at build time: -ldflags "-X main.version=... -X main.commit=..." (Dockerfile, CI).
+var (
+	version = "dev"
+	commit  = "unknown"
+)
+
 func main() {
 	// -healthcheck probes the running worker (distroless images have no curl).
 	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
@@ -74,7 +80,7 @@ func run() error {
 		go srv.ListenAndServe()
 		defer srv.Close()
 	}
-	zap.L().Info("worker running")
+	zap.L().Info("worker running", zap.String("version", version), zap.String("commit", commit))
 	<-ctx.Done()
 	zap.L().Info("worker stopping")
 	return nil

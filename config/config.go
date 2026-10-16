@@ -108,10 +108,12 @@ type Config struct {
 }
 
 // Load reads .env (if present) and the process environment; the process
-// environment wins.
+// environment wins. A key that is not set may come from a file named by
+// KEY_FILE (Docker secrets, e.g. MFA_KEY_FILE=/run/secrets/mfa_key).
 func Load() (Config, error) {
-	cfg, err := oneenv.Parse[Config]()
-	if err != nil {
+	files := newFileLookuper()
+	cfg, err := oneenv.Parse[Config](oneenv.WithLookuper(files))
+	if err = errors.Join(files.err(), err); err != nil {
 		return Config{}, err
 	}
 	if err := cfg.Validate(); err != nil {

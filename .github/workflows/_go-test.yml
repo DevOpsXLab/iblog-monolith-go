@@ -1,0 +1,45 @@
+name: go-test
+
+# Reusable: go test with coverage, uploaded as an artifact (for Sonar).
+on:
+  workflow_call:
+    inputs:
+      packages: { type: string, default: ./..., description: Go packages to test }
+      test-flags: { type: string, default: -race -count=1 -covermode=atomic, description: "several flags, word-split on purpose" }
+      coverage-file: { type: string, default: coverage.out, description: coverage profile path }
+      coverage-artifact: { type: string, default: coverage, description: artifact name of the profile }
+      retention-days: { type: number, default: 1, description: artifact retention }
+      go-version-file: { type: string, default: go.mod, description: file setup-go reads the Go version from }
+      runner: { type: string, default: ubuntu-24.04, description: runner label }
+      timeout-minutes: { type: number, default: 10, description: job timeout }
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+
+      - name: Test
+        env:
+          PACKAGES: ${{ inputs.packages }}
+          TEST_FLAGS: ${{ inputs.test-flags }}
+          COVERAGE_FILE: ${{ inputs.coverage-file }}
+        run: bash .github/scripts/go-test.sh
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.coverage-artifact }}
+          path: ${{ inputs.coverage-file }}
+          retention-days: ${{ inputs.retention-days }}

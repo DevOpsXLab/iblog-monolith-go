@@ -24,7 +24,7 @@ admin: ## create super admin: make admin USERNAME=.. EMAIL=.. (password: ADMIN_P
 	go run ./cmd/createadmin -username $(USERNAME) -email $(EMAIL)
 
 seed: ## fill running stack with demo content (authors, posts, comments, claps...)
-	go run ./cmd/seed -clean
+	$(MAKE) -C ../../seed run
 
 
 worker: ## run background worker (pair with WORKER=false on the API)

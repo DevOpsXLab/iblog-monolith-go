@@ -31,8 +31,6 @@ linters:
     rules:
       - path: _test\.go
         linters: [gosec, noctx, bodyclose]
-      - path: ^seed/|^cmd/seed/
-        linters: [gosec]
 
 formatters:
   enable:

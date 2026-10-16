@@ -1,0 +1,65 @@
+name: notify
+
+# Reusable: sends a CI or CD result to the Telegram topic of `environment`.
+# Never fails the caller: a Telegram outage must not fail a PR or a deploy.
+# Environment vars: TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID (optional).
+# Environment secret: TELEGRAM_BOT_TOKEN.
+on:
+  workflow_call:
+    inputs:
+      environment: { type: string, required: true, description: "GitHub environment (vars, secrets)" }
+      mode: { type: string, required: true, description: "ci | cd" }
+      results: { type: string, required: true, description: "toJSON(needs) of the caller" }
+      tag: { type: string, default: "", description: "image tag (cd only)" }
+      branch: { type: string, required: true, description: branch shown in the message }
+      title: { type: string, required: true, description: "PR title or commit message" }
+      url: { type: string, required: true, description: "PR or commit URL" }
+      runner: { type: string, default: ubuntu-24.04, description: runner label }
+      timeout-minutes: { type: number, default: 2, description: job timeout }
+    secrets:
+      TELEGRAM_BOT_TOKEN: { required: false }
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Notify
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    continue-on-error: true
+    # actions: read lets notify-ci.sh fetch failed job logs (GH_TOKEN).
+    permissions:
+      contents: read
+      actions: read
+    # deployment: false keeps the Deployments history clean.
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      # Every value goes through env, never ${{ }} inside run: (script injection).
+      - name: Send Telegram message
+        env:
+          MODE: ${{ inputs.mode }}
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ vars.TELEGRAM_TOPIC_ID }}
+          # Caller's toJSON(needs): every job is reported, whatever the stack.
+          RESULTS: ${{ inputs.results }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ inputs.branch }}
+          ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_MSG: ${{ inputs.title }}
+          COMMIT_URL: ${{ inputs.url }}
+        run: bash .github/scripts/notify.sh

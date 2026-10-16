@@ -20,6 +20,12 @@ import (
 	httpapi "github.com/iBlog/iblog-monolith-go/internal/interfaces/http"
 )
 
+// Set at build time: -ldflags "-X main.version=... -X main.commit=..." (Dockerfile, CI).
+var (
+	version = "dev"
+	commit  = "unknown"
+)
+
 func main() {
 	// -healthcheck probes the running API (distroless images have no curl).
 	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
@@ -78,7 +84,7 @@ func run() error {
 	srv.RegisterOnShutdown(stopStreams)
 	errc := make(chan error, 2)
 	go func() {
-		zap.L().Info("listening", zap.String("addr", srv.Addr))
+		zap.L().Info("listening", zap.String("addr", srv.Addr), zap.String("version", version), zap.String("commit", commit))
 		errc <- srv.ListenAndServe()
 	}()
 

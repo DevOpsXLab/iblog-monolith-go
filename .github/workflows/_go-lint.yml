@@ -1,0 +1,32 @@
+name: go-lint
+
+# Reusable: golangci-lint with the repo's .golangci.yml.
+on:
+  workflow_call:
+    inputs:
+      go-version-file: { type: string, default: go.mod, description: file setup-go reads the Go version from }
+      golangci-lint-version: { type: string, default: v2.14.0, description: golangci-lint release }
+      runner: { type: string, default: ubuntu-24.04, description: runner label }
+      timeout-minutes: { type: number, default: 10, description: job timeout }
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ inputs.golangci-lint-version }}

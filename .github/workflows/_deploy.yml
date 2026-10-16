@@ -1,0 +1,69 @@
+name: deploy
+
+# Reusable: releases <tag> on the environment's server with plain docker
+# (no compose): pull -> migrate up/down (docker run --rm) -> replace each app
+# container, wait healthy -> instant rollback to the previous containers.
+# Settings come from $DEPLOY_DIR/.env (written by _env.yml).
+# Environment vars: SERVER_HOST, SERVER_USER, DEPLOY_DIR, IMAGE_NAME,
+#   DOCKER_NETWORK (used when the network input is empty).
+# Environment secrets: SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS.
+# Server: docker, deploy user in the docker group, registry login for private images.
+on:
+  workflow_call:
+    inputs:
+      environment: { type: string, required: true, description: "GitHub environment (vars, secrets)" }
+      tag: { type: string, required: true, description: image tag (short sha) }
+      app-services: { type: string, required: true, description: 'space-separated long-running services, e.g. "api worker"' }
+      migrate-service: { type: string, default: "", description: 'one-shot migration service ("" = none)' }
+      migrate-mode: { type: string, default: up, description: "up (release) | skip (rollback, keep schema) | down (rollback schema with goose, destructive)" }
+      service-args: { type: string, default: "{}", description: "JSON: extra docker run args per service" }
+      network: { type: string, default: "", description: 'docker network the containers join ("" = DOCKER_NETWORK var, unset = default bridge)' }
+      container-prefix: { type: string, default: "", description: 'container name prefix, e.g. "iblog-"' }
+      health-timeout: { type: number, default: 120, description: seconds to wait for each app }
+      keep-tags: { type: number, default: 3, description: image tags kept on the server }
+      log-tail: { type: number, default: 100, description: container log lines shown on failure }
+      runner: { type: string, default: ubuntu-24.04, description: runner label }
+      timeout-minutes: { type: number, default: 15, description: job timeout }
+    secrets:
+      SSH_PRIVATE_KEY: { required: true }
+      SSH_KNOWN_HOSTS: { required: true }
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      # Key + pinned known_hosts + `server` alias for the next steps.
+      - name: SSH setup
+        env:
+          SERVER_HOST: ${{ vars.SERVER_HOST }}
+          SERVER_USER: ${{ vars.SERVER_USER }}
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: bash .github/scripts/setup-ssh.sh
+
+      - name: Deploy
+        env:
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+          IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+          TAG: ${{ inputs.tag }}
+          APP_SERVICES: ${{ inputs.app-services }}
+          MIGRATE_SERVICE: ${{ inputs.migrate-service }}
+          MIGRATE_MODE: ${{ inputs.migrate-mode }}
+          SERVICE_ARGS: ${{ inputs.service-args }}
+          NETWORK: ${{ inputs.network || vars.DOCKER_NETWORK }}
+          PREFIX: ${{ inputs.container-prefix }}
+          HEALTH_TIMEOUT: ${{ inputs.health-timeout }}
+          KEEP_TAGS: ${{ inputs.keep-tags }}
+          LOG_TAIL: ${{ inputs.log-tail }}
+        run: bash .github/scripts/deploy.sh

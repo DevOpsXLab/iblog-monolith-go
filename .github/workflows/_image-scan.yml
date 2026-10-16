@@ -1,0 +1,46 @@
+name: image-scan
+
+# Reusable: Trivy on the exact tarballs _image-build.yml saved.
+# Fails on fixable fail-severity findings; report-severity and unfixed ones are only logged.
+on:
+  workflow_call:
+    inputs:
+      targets: { type: string, required: true, description: 'JSON array of Dockerfile stages, e.g. ["api","worker"]' }
+      app-name: { type: string, required: true, description: local image and artifact prefix }
+      trivy-image: { type: string, default: "aquasec/trivy:0.75.0", description: pinned Trivy image }
+      report-severity: { type: string, default: "HIGH,CRITICAL", description: severities logged }
+      fail-severity: { type: string, default: CRITICAL, description: fixable severities that fail the scan }
+      runner: { type: string, default: ubuntu-24.04, description: runner label }
+      timeout-minutes: { type: number, default: 10, description: job timeout }
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan (${{ matrix.target }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    strategy:
+      fail-fast: false # report every image, not just the first bad one
+      matrix:
+        target: ${{ fromJSON(inputs.targets) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Download image
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app-name }}-${{ matrix.target }}
+          path: ${{ runner.temp }}
+
+      - name: Trivy scan
+        env:
+          TARBALL: ${{ runner.temp }}/${{ matrix.target }}.tar
+          TRIVY_IMAGE: ${{ inputs.trivy-image }}
+          TRIVY_REPORT_SEVERITY: ${{ inputs.report-severity }}
+          TRIVY_FAIL_SEVERITY: ${{ inputs.fail-severity }}
+        run: bash .github/scripts/trivy-scan.sh

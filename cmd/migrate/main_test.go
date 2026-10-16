@@ -27,7 +27,7 @@ import (
 
 // counts are the rows migrate writes; a re-run must not change them.
 const counts = `SELECT
-	(SELECT count(*) FROM goose_db_version),
+	(SELECT count(*) FROM migration_version),
 	(SELECT count(*) FROM guard_schema_version),
 	(SELECT count(*) FROM guard_permission),
 	(SELECT count(*) FROM guard_role),

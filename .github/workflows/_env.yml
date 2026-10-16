@@ -1,0 +1,87 @@
+name: env
+
+# Reusable: brings the app settings to the environment's server before
+# _deploy.yml releases. Own job, so missing settings stop the release before
+# any image is pulled or migrated. Two choices (inputs):
+#
+# source: where values come from
+#   server  managed on the server by hand (only checked)
+#   github  APP_SECRETS environment secret (+ <dir>/<environment>.env if env.dir set)
+#   sops    <dir>/<environment>.sops.env in git, decrypted on the server
+#           with the age key at age-key-file (key never leaves the server)
+#   vault   Vault Agent on the server renders them; CI holds nothing
+#
+# delivery: how secret-keys land on the server (non-secret keys -> .env)
+#   dotenv         in .env, env vars (simplest; visible in /proc/<pid>/environ)
+#   files          $DEPLOY_DIR/secrets/<key>, 0400; app reads KEY_FILE
+#   systemd-creds  encrypted with the server's TPM by creds-cmd
+#                  (/etc/credstore.encrypted/<key>.cred); systemd decrypts into
+#                  tmpfs at start (LoadCredentialEncrypted), app reads KEY_FILE
+#   vault          files rendered by Vault Agent in vault-dir; CI only checks
+#
+# Environment vars: SERVER_HOST, SERVER_USER, DEPLOY_DIR,
+#   CREDS_CMD (used when the creds-cmd input is empty).
+# Environment secrets: SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS, APP_SECRETS (github only).
+on:
+  workflow_call:
+    inputs:
+      environment: { type: string, required: true, description: "GitHub environment (vars, secrets)" }
+      source: { type: string, default: github, description: "server | github | sops | vault" }
+      delivery: { type: string, default: files, description: "dotenv | files | systemd-creds | vault" }
+      secret-keys: { type: string, default: "", description: space-separated keys delivered as secrets }
+      required-keys: { type: string, default: "", description: space-separated keys that must be set }
+      dir: { type: string, default: "", description: "env files in the repo (sops; optional public part for github)" }
+      age-key-file: { type: string, default: "", description: sops age key path on the server }
+      creds-cmd: { type: string, default: "", description: "systemd-creds encrypt helper allowed in sudoers (\"\" = CREDS_CMD var)" }
+      creds-dir: { type: string, default: /etc/credstore.encrypted, description: systemd-creds output dir }
+      vault-dir: { type: string, default: "", description: Vault Agent template destination dir }
+      runner: { type: string, default: ubuntu-24.04, description: runner label }
+      timeout-minutes: { type: number, default: 5, description: job timeout }
+    secrets:
+      SSH_PRIVATE_KEY: { required: true }
+      SSH_KNOWN_HOSTS: { required: true }
+      APP_SECRETS: { required: false }
+
+permissions:
+  contents: read
+
+jobs:
+  env:
+    name: Env (${{ inputs.source }} -> ${{ inputs.delivery }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    environment: ${{ inputs.environment }}
+    steps:
+      # Scripts + env files (env.dir, sops / optional github public part).
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            /.github/scripts/
+            ${{ inputs.dir && format('/{0}/', inputs.dir) || '' }}
+          sparse-checkout-cone-mode: false
+
+      # Key + pinned known_hosts + `server` alias for the next steps.
+      - name: SSH setup
+        env:
+          SERVER_HOST: ${{ vars.SERVER_HOST }}
+          SERVER_USER: ${{ vars.SERVER_USER }}
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: bash .github/scripts/setup-ssh.sh
+
+      - name: Env sync
+        env:
+          ENV_SOURCE: ${{ inputs.source }}
+          ENV_DELIVERY: ${{ inputs.delivery }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+          ENV_DIR: ${{ inputs.dir }}
+          ENV_SECRET_KEYS: ${{ inputs.secret-keys }}
+          ENV_REQUIRED: ${{ inputs.required-keys }}
+          APP_SECRETS: ${{ secrets.APP_SECRETS }}
+          AGE_KEY_FILE: ${{ inputs.age-key-file }}
+          CREDS_CMD: ${{ inputs.creds-cmd || vars.CREDS_CMD }}
+          CREDS_DIR: ${{ inputs.creds-dir }}
+          VAULT_DIR: ${{ inputs.vault-dir }}
+        run: bash .github/scripts/env-sync.sh

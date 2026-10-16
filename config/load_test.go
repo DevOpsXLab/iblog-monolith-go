@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -96,5 +97,37 @@ func TestAllowedOrigins(t *testing.T) {
 	c.CORSOrigins = "https://a.example, https://b.example"
 	if got := c.AllowedOrigins(); !slices.Equal(got, []string{"https://a.example", "https://b.example"}) {
 		t.Errorf("CORS_ORIGINS = %v", got)
+	}
+}
+
+func TestLoadSecretFile(t *testing.T) {
+	t.Chdir(t.TempDir())
+	key := strings.Repeat("k", 40)
+	if err := os.WriteFile("mfa_key", []byte(key+"\n"), 0o400); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("APP_ENV", "dev")
+	t.Setenv("MFA_KEY_FILE", "mfa_key")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.MFAKey != key {
+		t.Errorf("MFAKey from file = %q", c.MFAKey)
+	}
+
+	// KEY wins over KEY_FILE.
+	t.Setenv("MFA_KEY", strings.Repeat("e", 40))
+	if c, err = Load(); err != nil || c.MFAKey != strings.Repeat("e", 40) {
+		t.Errorf("MFA_KEY did not win: %q, %v", c.MFAKey, err)
+	}
+}
+
+func TestLoadSecretFileMissing(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("APP_ENV", "dev")
+	t.Setenv("MFA_KEY_FILE", "nope")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "MFA_KEY_FILE") {
+		t.Fatalf("err = %v", err)
 	}
 }

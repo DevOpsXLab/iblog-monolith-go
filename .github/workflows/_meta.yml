@@ -1,0 +1,49 @@
+name: meta
+
+# Reusable: run-wide CD values, computed once: target environment, image tag,
+# version, whether this run is a manual rollback and the migrate mode
+# (up | skip | down).
+on:
+  workflow_call:
+    inputs:
+      rollback-tag: { type: string, default: "", description: "existing image tag to roll back to (empty = normal deploy)" }
+      rollback-migrations: { type: boolean, default: false, description: rollback also runs goose down }
+      production-branch: { type: string, default: main, description: "this branch deploys production, any other deploys dev" }
+      tag-length: { type: number, default: 7, description: short sha length used as image tag }
+      runner: { type: string, default: ubuntu-24.04, description: runner label }
+      timeout-minutes: { type: number, default: 2, description: job timeout }
+    outputs:
+      environment: { value: "${{ jobs.meta.outputs.environment }}" }
+      tag: { value: "${{ jobs.meta.outputs.tag }}" }
+      version: { value: "${{ jobs.meta.outputs.version }}" }
+      rollback: { value: "${{ jobs.meta.outputs.rollback }}" }
+      migrate-mode: { value: "${{ jobs.meta.outputs.migrate-mode }}" }
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    name: Meta
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    outputs:
+      environment: ${{ steps.meta.outputs.environment }}
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      rollback: ${{ steps.meta.outputs.rollback }}
+      migrate-mode: ${{ steps.meta.outputs.migrate-mode }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Meta
+        id: meta
+        env:
+          ENVIRONMENT: ${{ github.ref_name == inputs.production-branch && 'production' || 'dev' }}
+          TAG_LENGTH: ${{ inputs.tag-length }}
+          ROLLBACK_TAG: ${{ inputs.rollback-tag }}
+          ROLLBACK_SCHEMA: ${{ inputs.rollback-migrations && 'down' || '' }}
+        run: bash .github/scripts/meta.sh

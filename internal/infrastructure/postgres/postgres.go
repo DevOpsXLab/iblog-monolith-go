@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/iBlog/iblog-monolith-go/internal/domain"
 	"github.com/iBlog/iblog-monolith-go/migrations"
-	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -116,6 +117,45 @@ func envDuration(key string, def time.Duration) time.Duration {
 // statement_timeout, so long index builds finish). A Postgres advisory lock
 // serialises replicas that start at the same time.
 func Migrate(ctx context.Context, url string) error {
+	return withProvider(ctx, url, func(p *goose.Provider) error {
+		_, err := p.Up(ctx)
+		return err
+	})
+}
+
+// MigrateDownTo rolls the app schema back so version is the newest applied
+// migration (goose Down of every newer one, newest first, under the same
+// advisory lock as Migrate). Data in dropped columns/tables is lost; used
+// only by an explicit rollback (cmd/migrate -down-to).
+func MigrateDownTo(ctx context.Context, url string, version int64) error {
+	return withProvider(ctx, url, func(p *goose.Provider) error {
+		_, err := p.DownTo(ctx, version)
+		return err
+	})
+}
+
+// LatestMigration is the newest app migration embedded in this binary. A
+// rollback asks the OLD image for it, so the NEW image can migrate down to it.
+func LatestMigration() (int64, error) {
+	names, err := fs.Glob(migrations.FS, "*.sql")
+	if err != nil {
+		return 0, err
+	}
+	var latest int64
+	for _, n := range names {
+		v, err := goose.NumericComponent(n)
+		if err != nil {
+			return 0, err
+		}
+		latest = max(latest, v)
+	}
+	if latest == 0 {
+		return 0, errors.New("postgres: no embedded migrations")
+	}
+	return latest, nil
+}
+
+func withProvider(ctx context.Context, url string, fn func(*goose.Provider) error) error {
 	db, err := pgxpool.New(ctx, url)
 	if err != nil {
 		return err
@@ -126,14 +166,16 @@ func Migrate(ctx context.Context, url string) error {
 		return err
 	}
 	provider, err := goose.NewProvider(goose.DialectPostgres, stdlib.OpenDBFromPool(db), migrations.FS,
-		goose.WithSessionLocker(locker))
+		goose.WithSessionLocker(locker), goose.WithTableName(gooseTable))
 	if err != nil {
 		return err
 	}
 	defer provider.Close()
-	_, err = provider.Up(ctx)
-	return err
+	return fn(provider)
 }
+
+// gooseTable is the goose version table.
+const gooseTable = "migration_version"
 
 const (
 	pgUniqueViolation     = "23505"

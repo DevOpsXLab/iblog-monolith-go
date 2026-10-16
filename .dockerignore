@@ -18,7 +18,7 @@ docker-compose*.yml
 Makefile
 spector.yaml
 
-# Docs and licence. Root README.md only: cmd/seed/data/posts/*.md is go:embed input.
+# Docs and licence
 README.md
 LICENSE
 
@@ -27,6 +27,3 @@ LICENSE
 **/testdata
 **/*.out
 **/*.log
-
-# Dev-only SQL seed (cmd/seed stays: the dev-only seed target builds it).
-seed/

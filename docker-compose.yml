@@ -134,13 +134,13 @@ services:
       <<: *app-env
       METRICS_ADDR: ":9090" # worker -healthcheck needs this listener
 
-  # Dev-only demo data. Not started by `up`; run it once:
+  # Dev-only demo data from the iblog-seed repo (../../seed). Not started by
+  # `up`; run it once:
   #   docker compose --profile dev run --rm seed
   seed:
     profiles: ["dev"]
     build:
-      context: .
-      target: seed
+      context: ../../seed
     image: iblog-seed:dev
     env_file: .env
     environment:
