@@ -54,7 +54,7 @@ jobs:
     steps:
       # Scripts + env files (env.dir, sops / optional github public part).
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           sparse-checkout: |
             /.github/scripts/

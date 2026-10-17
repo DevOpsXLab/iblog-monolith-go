@@ -33,11 +33,11 @@ on:
         type: boolean
         default: false
 
-# One lock per branch, so per environment: dev and production deploy
-# independently, but two runs never hit the same server at once.
+# One lock per environment: dev and production deploy independently, but two
+# runs never hit the same server at once. Must match _meta.yml's mapping.
 # Never cancel a deploy mid-way.
 concurrency:
-  group: cd-${{ github.ref_name }}
+  group: cd-${{ github.ref_name == 'main' && 'production' || 'dev' }}
   cancel-in-progress: false
 
 permissions:
@@ -46,7 +46,9 @@ permissions:
 jobs:
   # Run-wide values, computed once: target environment, image tag, version,
   # and whether this run is a manual rollback.
+  # Manual runs only from main or dev: a feature branch must not reach dev.
   meta:
+    if: github.ref_name == 'main' || github.ref_name == 'dev'
     uses: ./.github/workflows/_meta.yml
     with:
       rollback-tag: ${{ inputs.rollback-tag }}

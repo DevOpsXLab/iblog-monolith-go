@@ -27,12 +27,12 @@ jobs:
         target: ${{ fromJSON(inputs.targets) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           sparse-checkout: .github/scripts
 
       - name: Download image
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v8.0.2
         with:
           name: ${{ inputs.app-name }}-${{ matrix.target }}
           path: ${{ runner.temp }}

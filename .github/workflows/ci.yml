@@ -1,7 +1,7 @@
 name: CI
 
 # Checks every PR into dev or main before it can be merged (branch protection).
-#   lint + vuln + test + build (images, not pushed) -> notify
+#   lint + vuln + test + build -> scan (images, not pushed) -> notify
 # Jobs are reusable workflows (_*.yml, defaults in their inputs); this file
 # passes only what is specific to this service. Long steps are plain scripts in ../scripts/.
 # Deploys are CD's job: a merged PR is a push to its base branch, CD runs then.
@@ -28,17 +28,26 @@ jobs:
   test:
     uses: ./.github/workflows/_go-test.yml
 
-  # Build check only: nothing is pushed or saved (CD builds and pushes after merge).
+  # Nothing is pushed (CD builds and pushes after merge); tarballs only feed scan.
   build:
     uses: ./.github/workflows/_image-build.yml
     with:
-      targets: '["migrate","api","worker"]' # Dockerfile stages
-      app-name: ${{ vars.APP_NAME }} # repository var: local image prefix
+      targets: &targets '["migrate","api","worker"]' # Dockerfile stages
+      app-name: &app-name ${{ vars.APP_NAME }} # repository var: local image prefix
       version: pr-${{ github.event.pull_request.number }}
+      artifact: true
       timeout-minutes: 10
 
+  # Same gate as CD: a CVE fails the PR, not the deploy after merge.
+  scan:
+    needs: build
+    uses: ./.github/workflows/_image-scan.yml
+    with:
+      targets: *targets
+      app-name: *app-name
+
   notify:
-    needs: [lint, vuln, test, build]
+    needs: [lint, vuln, test, build, scan]
     if: always()
     uses: ./.github/workflows/_notify.yml
     with:

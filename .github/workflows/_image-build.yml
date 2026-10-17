@@ -31,14 +31,14 @@ jobs:
         target: ${{ fromJSON(inputs.targets) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v4.4.1
 
       # Same cache scope in CI and CD: CD's build after merge is mostly cache hits.
       - name: Docker build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v7.4.0
         with:
           context: ${{ inputs.context }}
           target: ${{ matrix.target }}
@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload image
         if: inputs.artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ inputs.app-name }}-${{ matrix.target }}
           path: ${{ runner.temp }}/${{ matrix.target }}.tar

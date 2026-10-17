@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Bumps the SHA-pinned actions in .github/workflows and their "# vX.Y.Z" comments.
+  # Bumps the version-pinned actions (@vX.Y.Z) in .github/workflows.
   - package-ecosystem: github-actions
     directory: /
     schedule:
